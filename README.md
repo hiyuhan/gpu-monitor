@@ -6,7 +6,7 @@ The idea is to speed up the work of finding a free GPU in institutions that shar
 
 The script works by using your account to SSH into the servers and running `nvidia-smi`. 
 
-`This is a Windows implemention of https://github.com/mseitzer/gpu-monitor`
+**This is a Windows implemention of** https://github.com/mseitzer/gpu-monitor
 
 ## Features
 

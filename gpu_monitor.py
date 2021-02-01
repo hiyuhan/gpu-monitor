@@ -1,13 +1,13 @@
-#!/usr/bin/env python3
-"""Script to check the state of GPU servers
-
+"""
+Script to check the state of GPU servers
 This script is most useful in conjunction with an ssh-key, so a password does
 not have to be entered for each SSH connection.
+by yuhan, ref: https://github.com/mseitzer/gpu-monitor
 """
 import argparse
 import logging
 import os
-import pwd
+#import pwd
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -30,11 +30,11 @@ parser = argparse.ArgumentParser(description='Check state of GPU servers')
 parser.add_argument('-v', '--verbose', action='store_true',
                     help='Be verbose')
 parser.add_argument('-l', '--list', action='store_true', help='Show used GPUs')
-parser.add_argument('-f', '--finger', action='store_true',
-                    help='Attempt to resolve user names to real names')
-parser.add_argument('-m', '--me', action='store_true',
-                    help='Show only GPUs used by current user')
-parser.add_argument('-u', '--user', help='Shows only GPUs used by a user')
+# parser.add_argument('-f', '--finger', action='store_true',
+#                     help='Attempt to resolve user names to real names')
+# parser.add_argument('-m', '--me', action='store_true',
+#                     help='Show only GPUs used by current user')
+# parser.add_argument('-u', '--user', help='Shows only GPUs used by a user')
 parser.add_argument('-s', '--ssh-user', default=None,
                     help='Username to use to connect with SSH')
 parser.add_argument('--ssh-timeout', default=DEFAULT_SSH_TIMEOUT,
@@ -65,16 +65,16 @@ REMOTE_PS_CMD = '{} {}'.format(SSH_CMD, PS_CMD)
 
 # Command for getting real names remotely
 # See https://stackoverflow.com/a/38235661
-REAL_NAMES_CMD = """<<-"EOF"
-import pwd
-for user in [{users}]:
-    try:
-        print(pwd.getpwnam(user).pw_gecos)
-    except KeyError:
-        print('Unknown')
-EOF
-"""
-REMOTE_REAL_NAMES_CMD = '{} python - {}'.format(SSH_CMD, REAL_NAMES_CMD)
+# REAL_NAMES_CMD = """<<-"EOF"
+# import pwd
+# for user in [{users}]:
+#     try:
+#         print(pwd.getpwnam(user).pw_gecos)
+#     except KeyError:
+#         print('Unknown')
+# EOF
+# """
+# REMOTE_REAL_NAMES_CMD = '{} python - {}'.format(SSH_CMD, REAL_NAMES_CMD)
 
 
 def run_command(cmd):
@@ -124,30 +124,30 @@ def run_ps_remote(server, pids, ssh_timeout, cmd_timeout):
     return res.decode('ascii') if res is not None else None
 
 
-def get_real_names_local(users):
-    real_names_by_users = {}
-    for user in users:
-        try:
-            real_names_by_users[user] = pwd.getpwnam(user).pw_gecos
-        except KeyError:
-            pass
-    return defaultdict(lambda: 'Unknown', real_names_by_users)
+# def get_real_names_local(users):
+#     real_names_by_users = {}
+#     for user in users:
+#         try:
+#             real_names_by_users[user] = pwd.getpwnam(user).pw_gecos
+#         except KeyError:
+#             pass
+#     return defaultdict(lambda: 'Unknown', real_names_by_users)
 
 
-def get_real_names_remote(server, users, ssh_timeout, cmd_timeout):
-    users_str = ','.join(('\'{}\''.format(user) for user in users))
-    cmd = REMOTE_REAL_NAMES_CMD.format(server=server,
-                                       users=users_str,
-                                       ssh_timeout=ssh_timeout,
-                                       cmd_timeout=cmd_timeout)
-    res = run_command(cmd)
-    if res is not None:
-        res = res.decode('utf-8')
-        real_names_by_users = {user: s.strip()
-                               for user, s in zip(users, res.split('\n'))}
-        return defaultdict(lambda: 'Unknown', real_names_by_users)
-    else:
-        return None
+# def get_real_names_remote(server, users, ssh_timeout, cmd_timeout):
+#     users_str = ','.join(('\'{}\''.format(user) for user in users))
+#     cmd = REMOTE_REAL_NAMES_CMD.format(server=server,
+#                                        users=users_str,
+#                                        ssh_timeout=ssh_timeout,
+#                                        cmd_timeout=cmd_timeout)
+#     res = run_command(cmd)
+#     if res is not None:
+#         res = res.decode('utf-8')
+#         real_names_by_users = {user: s.strip()
+#                                for user, s in zip(users, res.split('\n'))}
+#         return defaultdict(lambda: 'Unknown', real_names_by_users)
+#     else:
+#         return None
 
 
 def get_users_by_pid(ps_output):
@@ -183,9 +183,10 @@ def print_free_gpus(server, gpu_infos):
             info('\tGPU {}, {}'.format(gpu_info['idx'], gpu_info['model']))
 
 
-def print_gpu_infos(server, gpu_infos, run_ps, run_get_real_names,
-                    filter_by_user=None,
-                    translate_to_real_names=False):
+# def print_gpu_infos(server, gpu_infos, run_ps, run_get_real_names,
+#                     filter_by_user=None,
+#                     translate_to_real_names=False):
+def print_gpu_infos(server, gpu_infos, run_ps, filter_by_user=None):
     pids = [pid for gpu_info in gpu_infos for pid in gpu_info['pids']]
     if len(pids) > 0:
         ps = run_ps(pids=pids)
@@ -197,10 +198,10 @@ def print_gpu_infos(server, gpu_infos, run_ps, run_get_real_names,
     else:
         users_by_pid = {}
 
-    if translate_to_real_names:
-        all_users = set((users_by_pid[pid] for gpu_info in gpu_infos
-                         for pid in gpu_info['pids']))
-        real_names_by_users = run_get_real_names(users=all_users)
+    # if translate_to_real_names:
+    #     all_users = set((users_by_pid[pid] for gpu_info in gpu_infos
+    #                      for pid in gpu_info['pids']))
+    #     real_names_by_users = run_get_real_names(users=all_users)
 
     info('Server {}:'.format(server))
     for gpu_info in gpu_infos:
@@ -211,9 +212,9 @@ def print_gpu_infos(server, gpu_infos, run_ps, run_get_real_names,
         if len(gpu_info['pids']) == 0:
             status = 'Free'
         else:
-            if translate_to_real_names:
-                users = ['{} ({})'.format(user, real_names_by_users[user])
-                         for user in users]
+            # if translate_to_real_names:
+            #     users = ['{} ({})'.format(user, real_names_by_users[user])
+            #              for user in users]
 
             status = 'Used by {}'.format(', '.join(users))
 
@@ -246,19 +247,19 @@ def main(argv):
     if args.ssh_user is not None:
         args.servers = ['{}@{}'.format(args.ssh_user, server)
                         for server in args.servers]
-    if args.me:
-        if args.ssh_user is not None:
-            args.user = args.ssh_user
-        else:
-            args.user = pwd.getpwuid(os.getuid()).pw_name
-    if args.user or args.finger:
-        args.list = True
+    # if args.me:
+    #     if args.ssh_user is not None:
+    #         args.user = args.ssh_user
+    #     else:
+    #         args.user = pwd.getpwuid(os.getuid()).pw_name
+    # if args.user or args.finger:
+    #     args.listargs.user = True
 
     for server in args.servers:
         if server == '.' or server == 'localhost' or server == '127.0.0.1':
             run_nvidiasmi = run_nvidiasmi_local
             run_ps = run_ps_local
-            run_get_real_names = get_real_names_local
+            # run_get_real_names = get_real_names_local
         else:
             run_nvidiasmi = partial(run_nvidiasmi_remote,
                                     server=server,
@@ -268,10 +269,10 @@ def main(argv):
                              server=server,
                              ssh_timeout=args.ssh_timeout,
                              cmd_timeout=args.cmd_timeout)
-            run_get_real_names = partial(get_real_names_remote,
-                                         server=server,
-                                         ssh_timeout=args.ssh_timeout,
-                                         cmd_timeout=args.cmd_timeout)
+            # run_get_real_names = partial(get_real_names_remote,
+            #                              server=server,
+            #                              ssh_timeout=args.ssh_timeout,
+            #                              cmd_timeout=args.cmd_timeout)
 
         nvidiasmi = run_nvidiasmi()
         if nvidiasmi is None:
@@ -282,9 +283,10 @@ def main(argv):
         gpu_infos = get_gpu_infos(nvidiasmi)
 
         if args.list:
-            print_gpu_infos(server, gpu_infos, run_ps, run_get_real_names,
-                            filter_by_user=args.user,
-                            translate_to_real_names=args.finger)
+            # print_gpu_infos(server, gpu_infos, run_ps, run_get_real_names,
+            #                 filter_by_user=args.user,
+            #                 translate_to_real_names=args.finger)
+            print_gpu_infos(server, gpu_infos, run_ps)
         else:
             print_free_gpus(server, gpu_infos)
 
